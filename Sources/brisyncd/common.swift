@@ -96,15 +96,13 @@ protocol Display {
 	var name: String { get set }
 }
 
-extension Display {
-	func getName() -> String? {
-		let info = IODisplayCreateInfoDictionary(display, IOOptionBits(kIODisplayOnlyPreferredName)).takeUnretainedValue() as NSDictionary
-		guard let names = info[kDisplayProductName] as? NSDictionary else {
-			return nil
-		}
-		guard let first = names.allKeys.first, let name = names[first] else {
-			return nil
-		}
-		return name as? String
+func getDisplayName(_ display: io_service_t) -> String? {
+	let info = IODisplayCreateInfoDictionary(display, IOOptionBits(kIODisplayOnlyPreferredName)).takeUnretainedValue() as NSDictionary
+	guard let names = info[kDisplayProductName] as? NSDictionary else {
+		return nil
 	}
+	guard let first = names.allKeys.first, let name = names[first] else {
+		return nil
+	}
+	return name as? String
 }

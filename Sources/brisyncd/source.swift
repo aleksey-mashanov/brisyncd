@@ -2,12 +2,14 @@ import Foundation
 import os.log
 
 class SourceDisplays: PublishTerminateHandler {
+	let name: String?
 	let callback: (Float) -> Void
 	var source: SourceDisplay?
 
 	override var matchClass: String { return "AppleBacklightDisplay" }
 
-	init(_ callback: @escaping (Float) -> Void) throws {
+	init(name: String? = nil, _ callback: @escaping (Float) -> Void) throws {
+		self.name = name
 		self.callback = callback
 		try super.init()
 	}
@@ -17,7 +19,7 @@ class SourceDisplays: PublishTerminateHandler {
 	}
 
 	override func published(_ service: io_service_t) throws {
-		guard self.source == nil else {
+		guard source == nil && (name == nil || name == getDisplayName(service)) else {
 			IOObjectRelease(service)
 			return
 		}
@@ -63,7 +65,7 @@ class SourceDisplay: Display {
 		IOObjectRelease(display)
 	}
 
-	lazy var name: String = getName() ?? "unknown"
+	lazy var name: String = getDisplayName(display) ?? "unknown"
 
 	func sync() throws {
 		var brightness: Float = 0
