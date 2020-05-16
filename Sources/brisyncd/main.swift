@@ -14,68 +14,101 @@ struct Brisyncd: ParsableCommand {
 			brisyncd receives notifications from the system about displays connection/disconnection \
 			and automatically selects display to get the brightness from and displays to apply \
 			the brightness to.
-			"""
-	)
 
-	@Option(
-		help: ArgumentHelp(
-			"Name of the source display.",
-			discussion: """
-				If not set then the first found will be used.
+			Additional configuration can be provided by a configuration file and command-line options. \
+			By default brisyncd reads configuration from ~/.brisyncd.json and /usr/local/etc/brisyncd.json \
+			(the first found of them). This can be overridden by --config option. \
+			Configuration file is a JSON with the following structure (all fields are optional, see \
+			command-line options description for detailed information):
 
-				"""
-		)
-	)
-	var source: String?
-
-	@OptionGroup()
-	var target: Target
-
-	@Option(
-		default: [:],
-		help: ArgumentHelp(
-			"Targets displays configuration for a heterogenous multi-monitor setup.",
-			discussion: """
-				If you have more than one external display then different configurations \
-				may be required for them. In this case you can use this option to \
-				configure each monitor separately.
-
-				This option accepts JSON containing a dictionary which keys are names of \
-				displays and values are configuration dictionaries with the following \
-				keys: "min", "max", "gamma", "contrast". Meaning and possible values are \
-				the same as for the command-line options with the same names. \
-				Values specified in command-line options in this case are used as defaults.
-
-				Example: '{"DELL U2720Q":{"min":25,"max":75,"gamma":2,"contrast":75}}'
-
-				"""
-		),
-		transform: {
-			guard let data = $0.data(using: .utf8) else {
-				throw ValidationError("Badly encoded string, should be UTF-8")
+			{
+				"source": "Color LCD",  # name of the source display
+				"min": 0,               # default minimum brightness level (default: 0)
+				"max": 100,             # default maximum brightness level (default: 100)
+				"gamma": 1.0,           # default brightness gamma correction (default: 1.0)
+				"contrast": null,       # default contrast (default: null)
+				"targets": {            # dictionary of targets with custom configuration
+					"DELL U2720Q": {    # keys of the dict are names of the target displays
+						"min": 35,      # minimum brightness level
+						"max": 85,      # maximum brightness level
+						"gamma": 2.0,   # brightness gamma correction
+						"contrast": 75  # normal contrast
+					}
+				},
+				"targetsOnly": true     # manage known targets only (default: false)
 			}
-			return try JSONDecoder().decode(Dictionary<String, TargetJSON>.self, from: data)
-		}
+			""",
+		subcommands: [ConfigCommand.self]
 	)
-	var targets: [String: TargetJSON]
 
-	@Flag(
-		help: ArgumentHelp(
-			"Synchronize brightness of known displays only.",
-			discussion: """
-				If this flag is set then the brightness of the displays specified in \
-				'--targets' option only will be synchronized.
-
-				"""
-		)
-	)
-	var targetsOnly: Bool
-
-	struct Target: ParsableArguments {
+	struct Options: ParsableArguments {
 		@Option(
-			default: 0,
+			name: .shortAndLong,
 			help: ArgumentHelp(
-				"Minimum synchronizable brightness.",
+				"Configuration file path.",
+				discussion: """
+					Read configuration from a JSON file. \
+					If this option is not provided then configuration will be read from ~/.brisyncd.json \
+					or /usr/local/etc/brisyncd.json.
+
+					"""
+			)
+		)
+		var config: String?
+
+		@Option(
+			help: ArgumentHelp(
+				"Name of the source display.",
+				discussion: """
+					If not set then the first found will be used.
+
+					"""
+			)
+		)
+		var source: String?
+
+		@Option(
+			help: ArgumentHelp(
+				"Targets displays configuration for a heterogenous multi-monitor setup.",
+				discussion: """
+					If you have more than one external display then different configurations \
+					may be required for them. In this case you can use this option to \
+					configure each monitor separately.
+
+					This option accepts JSON containing a dictionary which keys are names of \
+					displays and values are configuration dictionaries with the following \
+					keys: "min", "max", "gamma", "contrast". Meaning and possible values are \
+					the same as for the command-line options with the same names. \
+					Values specified in command-line options in this case are used as defaults.
+
+					Example: '{"DELL U2720Q":{"min":35,"max":85,"gamma":2,"contrast":75}}'
+
+					"""
+			),
+			transform: {
+				guard let data = $0.data(using: .utf8) else {
+					throw ValidationError("Badly encoded string, should be UTF-8")
+				}
+				return try JSONDecoder().decode(Dictionary<String, Config.Target>.self, from: data)
+			}
+		)
+		var targets: [String: Config.Target]?
+
+		@Flag(
+			help: ArgumentHelp(
+				"Synchronize brightness of known displays only.",
+				discussion: """
+					If this flag is set then the brightness of the displays specified in \
+					'--targets' option only will be synchronized.
+
+					"""
+			)
+		)
+		var targetsOnly: Bool
+
+		@Option(
+			help: ArgumentHelp(
+				"Minimum synchronizable brightness. (default: 0)",
 				discussion: """
 					Minimum brightness level of the source display which can be represented by the target display.
 
@@ -86,12 +119,11 @@ struct Brisyncd: ParsableCommand {
 					"""
 			)
 		)
-		var min: Int
+		var min: Int?
 
 		@Option(
-			default: 100,
 			help: ArgumentHelp(
-				"Maximum synchronizable brightness.",
+				"Maximum synchronizable brightness. (default: 100)",
 				discussion: """
 					Maximum brightness level of the source display which can be represented by the target display.
 
@@ -102,12 +134,11 @@ struct Brisyncd: ParsableCommand {
 					"""
 			)
 		)
-		var max: Int
+		var max: Int?
 
 		@Option(
-			default: 1,
 			help: ArgumentHelp(
-				"Gamma correction",
+				"Brightness gamma correction. (default: 1.0)",
 				discussion: """
 					Power of the gamma correction function between brightnesses of source and target displays.
 
@@ -117,7 +148,7 @@ struct Brisyncd: ParsableCommand {
 					"""
 			)
 		)
-		var gamma: Float
+		var gamma: Float?
 
 		@Option(
 			help: ArgumentHelp(
@@ -132,32 +163,24 @@ struct Brisyncd: ParsableCommand {
 			)
 		)
 		var contrast: Int?
-
-		mutating func validate() throws {
-			guard min < max else {
-				throw ValidationError("'max' must be greater then 'min'")
-			}
-
-			guard contrast == nil || contrast! >= 0 && contrast! <= 100 else {
-				throw ValidationError("'contrast' must be between 0 and 100")
-			}
-		}
 	}
 
-	struct TargetJSON: Codable {
-		let min: Int?
-		let max: Int?
-		let gamma: Float?
-		let contrast: Int?
+	@OptionGroup()
+	var options: Options
+
+	static func initDisplays(with config: Config) throws -> (SourceDisplays, TargetDisplays) {
+		TargetDisplay.Config.defaultConfig = TargetDisplay.Config(config)
+
+		let targets = try TargetDisplays(config.targets.mapValues(TargetDisplay.Config.init), onlyKnown: config.targetsOnly)
+		let sources = try SourceDisplays(name: config.source) {
+			targets.set(brightness: $0)
+		}
+		return (sources, targets)
 	}
 
 	func run() throws {
-		TargetDisplay.Config.defaultConfig = TargetDisplay.Config(target)
-
-		let targets = try TargetDisplays(self.targets.mapValues(TargetDisplay.Config.init), onlyKnown: targetsOnly)
-		let sources = try SourceDisplays(name: source) {
-			targets.set(brightness: $0)
-		}
+		let config = try Config.read(with: options)
+		let (sources, targets) = try Brisyncd.initDisplays(with: config)
 		try sources.sync()
 
 		let done = DispatchSemaphore(value: 0)
@@ -180,26 +203,153 @@ struct Brisyncd: ParsableCommand {
 			done.wait()
 		}
 	}
+
+	struct ConfigCommand: ParsableCommand {
+		static let configuration = CommandConfiguration(
+			commandName: "config",
+			abstract: "Print current configuration to stdout.",
+			discussion: """
+				This is the starting point of customizing configuration. \
+				Run `brisyncd config > ~/.brisyncd.json` and then edit \
+				the generated file.
+				"""
+		)
+
+		@OptionGroup()
+		var options: Options
+
+		func run() throws {
+			var config = try Config.read(with: options)
+			let (sources, targets) = try Brisyncd.initDisplays(with: config)
+			config.source = sources.source?.name
+			for target in targets.targets.values {
+				config.targets[target.name] = Config.Target(target.config)
+			}
+
+			let encoder = JSONEncoder()
+			encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+			let data = try encoder.encode(config)
+			print(String(data: data, encoding: .utf8)!)
+		}
+	}
 }
 
 Brisyncd.main()
 
-extension TargetDisplay.Config {
-	init(_ target: Brisyncd.Target) {
-		self.init(
-			min: Float(target.min) / 100,
-			max: Float(target.max) / 100,
-			gamma: target.gamma,
-			contrast: target.contrast.map { Float($0) / 100 }
-		)
-	}
+protocol TargetConfig {
+	var min: Int? { get set }
+	var max: Int? { get set }
+	var gamma: Float? { get set }
+	var contrast: Int? { get set }
+	init(min: Int?, max: Int?, gamma: Float?, contrast: Int?)
+}
 
-	init(_ target: Brisyncd.TargetJSON) {
+extension TargetDisplay.Config {
+	init(_ target: TargetConfig) {
 		self.init(
 			min: target.min.map { Float($0) / 100 } ?? Self.defaultConfig.min,
 			max: target.max.map { Float($0) / 100 } ?? Self.defaultConfig.max,
 			gamma: target.gamma ?? Self.defaultConfig.gamma,
 			contrast: target.contrast.map { Float($0) / 100 } ?? Self.defaultConfig.contrast
+		)
+	}
+}
+
+struct Config: Codable, TargetConfig {
+	var min: Int?
+	var max: Int?
+	var gamma: Float?
+	var contrast: Int?
+
+	var source: String? = nil
+	var targets: [String: Target] = [:]
+	var targetsOnly = false
+
+	init(min: Int? = nil, max: Int? = nil, gamma: Float? = nil, contrast: Int? = nil) {
+		self.min = min
+		self.max = max
+		self.gamma = gamma
+		self.contrast = contrast
+	}
+
+	struct Target: Codable, TargetConfig {
+		var min: Int?
+		var max: Int?
+		var gamma: Float?
+		var contrast: Int?
+	}
+
+	static func read(from file: String) throws -> Config {
+		let expandedFile = NSString(string: file).expandingTildeInPath
+		do {
+			let data = try Data(contentsOf: URL(fileURLWithPath: expandedFile))
+			return try JSONDecoder().decode(Self.self, from: data)
+		} catch let error as CocoaError {
+			throw Error.configNotFound(expandedFile, error.localizedDescription)
+		} catch let error as DecodingError {
+			throw Error.configCorrupted(expandedFile, String(describing: error))
+		}
+	}
+
+	static func read() throws -> Config? {
+		for file in ["~/.brisyncd.json", "/usr/local/etc/brisyncd.json"] {
+			do {
+				return try read(from: file)
+			} catch Error.configNotFound {
+			}
+		}
+		return nil
+	}
+
+	static func read(with options: Brisyncd.Options) throws -> Config {
+		var c = try options.config.map(Config.read(from:)) ?? Config.read() ?? Config()
+		if let source = options.source {
+			c.source = source
+		}
+		if let targets = options.targets {
+			c.targets = targets
+		}
+		if options.targetsOnly {
+			c.targetsOnly = true
+		}
+		if let min = options.min {
+			c.min = min
+		}
+		if let max = options.max {
+			c.max = max
+		}
+		if let gamma = options.gamma {
+			c.gamma = gamma
+		}
+		if let contrast = options.contrast {
+			c.contrast = contrast
+		}
+		return c
+	}
+
+	enum Error: Swift.Error, CustomStringConvertible {
+		case configNotFound(String, String)
+		case configCorrupted(String, String)
+
+		var description: String {
+			switch self {
+			case .configNotFound(let file, let msg):
+				return "Failed to read config file [\(file)]: \(msg)"
+			case .configCorrupted(let file, let msg):
+				return "Failed to parse config file [\(file)]: \(msg)"
+			}
+		}
+	}
+}
+
+extension TargetConfig {
+	init(_ target: TargetDisplay.Config) {
+		self.init(
+			min: Int(target.min * 100),
+			max: Int(target.max * 100),
+			gamma: target.gamma,
+			contrast: target.contrast.map { Int($0 * 100) }
 		)
 	}
 }
