@@ -9,10 +9,23 @@ brisyncd receives notifications from the system about displays
 connection/disconnection and automatically selects display to get the
 brightness from and displays to apply the brightness to.
 
-## Usage
+## Installation
 
-Just run `brisyncd` to start synchronization with default options. See `brisyncd -h`
-for more information.
+### Using `brew`
+
+```sh
+brew install aleksey-mashanov/brisyncd/brisyncd
+brew services start aleksey-mashanov/brisyncd/brisyncd
+```
+
+### Manual
+
+```sh
+swift build -c release
+cp `swift build -c release --show-bin-path`/brisyncd /usr/local/sbin/
+cp io.github.aleksey-mashanov.brisyncd.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/io.github.aleksey-mashanov.brisyncd.plist
+```
 
 ## Configuration
 
@@ -40,3 +53,5 @@ see `brisyncd -h` for detailed description):
     "targetsOnly": true     # manage known targets only (default: false)
 }
 ```
+
+`brisyncd` reads configuration file on startup, so don't forget to restart it after modification.

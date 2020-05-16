@@ -1,0 +1,25 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "DDC.swift",
+        "repositoryURL": "https://github.com/aleksey-mashanov/DDC.swift.git",
+        "state": {
+          "branch": "master",
+          "revision": "94b6b1cfdd87a9ace7f1563f168b7999b9db1909",
+          "version": null
+        }
+      },
+      {
+        "package": "swift-argument-parser",
+        "repositoryURL": "https://github.com/apple/swift-argument-parser.git",
+        "state": {
+          "branch": "master",
+          "revision": "f18ce1a545460fc482bed3d402676455f87fb455",
+          "version": null
+        }
+      }
+    ]
+  },
+  "version": 1
+}
