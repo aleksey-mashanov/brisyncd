@@ -11,11 +11,11 @@ brightness from and displays to apply the brightness to.
 
 ## Installation
 
-### Using `brew`
+### Using [brew](https://brew.sh/)
 
 ```sh
 brew install aleksey-mashanov/brisyncd/brisyncd
-brew services start aleksey-mashanov/brisyncd/brisyncd
+brew services start brisyncd
 ```
 
 ### Manual
@@ -29,9 +29,12 @@ launchctl load ~/Library/LaunchAgents/io.github.aleksey-mashanov.brisyncd.plist
 
 ## Configuration
 
-Additional configuration can be provided by a configuration file.
-If no `--config` option provided `brisyncd` reads configuration from
-`~/.brisyncd.json` and `/usr/local/etc/brisyncd.json` (the first found of them).
+To make all your displays look alike in the full range of the main display
+brightness tuning of the transfer function is required. This can be done using
+four parameters: `min`, `max`, `gamma` and `contrast`.
+
+`brisyncd` reads configuration from `~/.brisyncd.json` and `/usr/local/etc/brisyncd.json`
+(the first found of them, can be overridden using `--config` command-line option).
 Configuration file is a JSON with the following structure (all fields are optional,
 see `brisyncd -h` for detailed description):
 
@@ -54,4 +57,33 @@ see `brisyncd -h` for detailed description):
 }
 ```
 
-`brisyncd` reads configuration file on startup, so don't forget to restart it after modification.
+The simplest way to create custom configuration is to dump a configuration detected by brisyncd
+to a file and then modify it:
+
+```sh
+brisyncd config > ~/.brisyncd.json
+```
+
+`brisyncd` reads configuration file on startup so don't forget to restart it after modification:
+
+```sh
+brew services restart brisyncd
+```
+
+## Why brisyncd
+
+* brisyncd receives notifications from the system when the main display brightness changes.
+* Brightness is synchronized in real-time, with no visible delays.
+* There are no timers, no background and periodic jobs which can consume the battery.
+* brisyncd just does its job - no UI, no keyboard shortcuts, no additional features.
+* brisyncd does not use `AppleLMUController` so it is compatible with the latest MacBook Pro.
+* Can be tuned for displays with different peak brightness and brightness function.
+* Can use contrast to darken display beyond 0% brightness.
+* Supports heterogenous multi-display configurations.
+
+## Displays supported
+
+brisyncd uses [DDC/CI](https://en.wikipedia.org/wiki/Display_Data_Channel) to control display
+brightness so it works for displays which support this specification.
+
+Docking stations are known to not support DDC/CI proxying.
