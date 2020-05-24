@@ -57,6 +57,7 @@ class TargetDisplay: Display {
 	var brightness: UInt16 = 101
 	var contrast: UInt16 = 101
 	var config = Config.defaultConfig
+	var job = Job()
 
 	init?(_ display: io_service_t) {
 		guard let framebuffer = Self.framebuffer(forDisplay: display) else {
@@ -85,15 +86,69 @@ class TargetDisplay: Display {
 		let max: Float
 		let gamma: Float
 		let contrast: Float?
+		let interval: Int
 
-		init(min: Float = 0, max: Float = 1, gamma: Float = 1, contrast: Float? = nil) {
+		init(min: Float = 0, max: Float = 1, gamma: Float = 1, contrast: Float? = nil, interval: Int = 50) {
 			self.min = min
 			self.max = max
 			self.gamma = gamma
 			self.contrast = contrast
+			self.interval = interval
 		}
 
 		static var defaultConfig = Config()
+	}
+
+	struct Job {
+		var mutex = DispatchSemaphore(value: 1)
+		var active = false
+		var brightness: UInt16?
+		var contrast: UInt16?
+	}
+
+	func enqueue(brightness: UInt16? = nil, contrast: UInt16? = nil) {
+		job.mutex.wait()
+		if let brightness = brightness {
+			job.brightness = brightness
+		}
+		if let contrast = contrast {
+			job.contrast = contrast
+		}
+		if !job.active {
+			job.active = true
+			DispatchQueue.global(qos: .background).async {
+				self.process()
+			}
+		}
+		job.mutex.signal()
+	}
+
+	func process() {
+		job.mutex.wait()
+		if let brightness = job.brightness {
+			job.brightness = nil
+			job.mutex.signal()
+			if ddc.write(command: .brightness, value: brightness) {
+				os_log("Target display [%{public}s] brightness set to %d%%", type: .info, name, brightness)
+			} else {
+				os_log("Failed to set target display [%{public}s] brightness to %d%%", name, brightness)
+			}
+		} else if let contrast = job.contrast {
+			job.contrast = nil
+			job.mutex.signal()
+			if ddc.write(command: .contrast, value: contrast) {
+				os_log("Target display [%{public}s] contrast set to %d%%", type: .info, name, contrast)
+			} else {
+				os_log("Failed to set target display [%{public}s] contrast to %d%%", name, contrast)
+			}
+		} else {
+			job.active = false
+			job.mutex.signal()
+			return
+		}
+		DispatchQueue.global(qos: .background).asyncAfter(deadline: DispatchTime.now() + DispatchTimeInterval.milliseconds(config.interval)) {
+			self.process()
+		}
 	}
 
 	func set(brightness: Float) {
@@ -103,24 +158,16 @@ class TargetDisplay: Display {
 		} else if scaledBrightness > 1 {
 			scaledBrightness = 1
 		}
-		let newBrightness = UInt16(powf(scaledBrightness, config.gamma) * 100)
+		let newBrightness = UInt16((powf(scaledBrightness, config.gamma) * 100).rounded())
 		if newBrightness != self.brightness {
-			guard ddc.write(command: .brightness, value: newBrightness) else {
-				os_log("Failed to set target display [%{public}s] brightness to %d%%", name, newBrightness)
-				return
-			}
-			os_log("Target display [%{public}s] brightness set to %d%%", type: .info, name, newBrightness)
+			enqueue(brightness: newBrightness)
 			self.brightness = newBrightness
 		}
 
 		if let maxContrast = config.contrast {
-			let newContrast = UInt16(100 * (brightness < config.min ? maxContrast * (brightness / config.min) : maxContrast))
+			let newContrast = UInt16(((brightness < config.min ? maxContrast * (brightness / config.min) : maxContrast) * 100).rounded())
 			if newContrast != self.contrast {
-				guard ddc.write(command: .contrast, value: newContrast) else {
-					os_log("Failed to set target display [%{public}s] contrast to %d%%", name, newContrast)
-					return
-				}
-				os_log("Target display [%{public}s] contrast set to %d%%", type: .info, name, newContrast)
+				enqueue(contrast: newContrast)
 				self.contrast = newContrast
 			}
 		}

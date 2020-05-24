@@ -27,12 +27,14 @@ struct Brisyncd: ParsableCommand {
 				"max": 100,             # default maximum brightness level (default: 100)
 				"gamma": 1.0,           # default brightness gamma correction (default: 1.0)
 				"contrast": null,       # default contrast (default: null)
+				"interval": 50,         # default update interval, ms. (default: 50)
 				"targets": {            # dictionary of targets with custom configuration
 					"DELL U2720Q": {    # keys of the dict are names of the target displays
 						"min": 35,      # minimum brightness level
 						"max": 85,      # maximum brightness level
-						"gamma": 2.0,   # brightness gamma correction
-						"contrast": 75  # normal contrast
+						"gamma": 2.2,   # brightness gamma correction
+						"contrast": 75, # normal contrast
+						"interval": 50  # update interval, ms.
 					}
 				},
 				"targetsOnly": true     # manage known targets only (default: false)
@@ -81,7 +83,7 @@ struct Brisyncd: ParsableCommand {
 					the same as for the command-line options with the same names. \
 					Values specified in command-line options in this case are used as defaults.
 
-					Example: '{"DELL U2720Q":{"min":35,"max":85,"gamma":2,"contrast":75}}'
+					Example: '{"DELL U2720Q":{"min":35,"max":85,"gamma":2.2,"contrast":75}}'
 
 					"""
 			),
@@ -163,6 +165,18 @@ struct Brisyncd: ParsableCommand {
 			)
 		)
 		var contrast: Int?
+
+		@Option(
+			help: ArgumentHelp(
+				"Target display update interval, ms. (default: 50)",
+				discussion: """
+					This option is used to not DoS display's DDC/CI by sending too many messages to it. \
+					Increment interval if you encounter problems.
+
+					"""
+			)
+		)
+		var interval: Int?
 	}
 
 	@OptionGroup()
@@ -242,7 +256,8 @@ protocol TargetConfig {
 	var max: Int? { get set }
 	var gamma: Float? { get set }
 	var contrast: Int? { get set }
-	init(min: Int?, max: Int?, gamma: Float?, contrast: Int?)
+	var interval: Int? { get set }
+	init(min: Int?, max: Int?, gamma: Float?, contrast: Int?, interval: Int?)
 }
 
 extension TargetDisplay.Config {
@@ -251,7 +266,8 @@ extension TargetDisplay.Config {
 			min: target.min.map { Float($0) / 100 } ?? Self.defaultConfig.min,
 			max: target.max.map { Float($0) / 100 } ?? Self.defaultConfig.max,
 			gamma: target.gamma ?? Self.defaultConfig.gamma,
-			contrast: target.contrast.map { Float($0) / 100 } ?? Self.defaultConfig.contrast
+			contrast: target.contrast.map { Float($0) / 100 } ?? Self.defaultConfig.contrast,
+			interval: target.interval ?? Self.defaultConfig.interval
 		)
 	}
 }
@@ -261,16 +277,18 @@ struct Config: Codable, TargetConfig {
 	var max: Int?
 	var gamma: Float?
 	var contrast: Int?
+	var interval: Int?
 
 	var source: String? = nil
 	var targets: [String: Target] = [:]
 	var targetsOnly = false
 
-	init(min: Int? = nil, max: Int? = nil, gamma: Float? = nil, contrast: Int? = nil) {
+	init(min: Int? = nil, max: Int? = nil, gamma: Float? = nil, contrast: Int? = nil, interval: Int? = nil) {
 		self.min = min
 		self.max = max
 		self.gamma = gamma
 		self.contrast = contrast
+		self.interval = interval
 	}
 
 	struct Target: Codable, TargetConfig {
@@ -278,6 +296,7 @@ struct Config: Codable, TargetConfig {
 		var max: Int?
 		var gamma: Float?
 		var contrast: Int?
+		var interval: Int?
 	}
 
 	static func read(from file: String) throws -> Config {
@@ -325,6 +344,9 @@ struct Config: Codable, TargetConfig {
 		if let contrast = options.contrast {
 			c.contrast = contrast
 		}
+		if let interval = options.interval {
+			c.interval = interval
+		}
 		return c
 	}
 
@@ -349,7 +371,8 @@ extension TargetConfig {
 			min: Int(target.min * 100),
 			max: Int(target.max * 100),
 			gamma: target.gamma,
-			contrast: target.contrast.map { Int($0 * 100) }
+			contrast: target.contrast.map { Int($0 * 100) },
+			interval: target.interval
 		)
 	}
 }

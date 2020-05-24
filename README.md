@@ -45,12 +45,14 @@ see `brisyncd -h` for detailed description):
     "max": 100,             # default maximum brightness level (default: 100)
     "gamma": 1.0,           # default brightness gamma correction (default: 1.0)
     "contrast": null,       # default contrast (default: null)
+    "interval": 50,         # default update interval, ms. (default: 50)
     "targets": {            # dictionary of targets with custom configuration
         "DELL U2720Q": {    # keys of the dict are names of the target displays
             "min": 35,      # minimum brightness level
             "max": 85,      # maximum brightness level
-            "gamma": 2.0,   # brightness gamma correction
-            "contrast": 75  # normal contrast
+            "gamma": 2.2,   # brightness gamma correction
+            "contrast": 75, # normal contrast
+            "interval": 50  # update interval, ms.
         }
     },
     "targetsOnly": true     # manage known targets only (default: false)
