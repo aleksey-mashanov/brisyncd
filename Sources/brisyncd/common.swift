@@ -97,7 +97,7 @@ protocol Display {
 }
 
 func getDisplayName(_ display: io_service_t) -> String? {
-	let info = IODisplayCreateInfoDictionary(display, IOOptionBits(kIODisplayOnlyPreferredName)).takeUnretainedValue() as NSDictionary
+	let info = IODisplayCreateInfoDictionary(display, IOOptionBits(kIODisplayOnlyPreferredName)).takeRetainedValue() as NSDictionary
 	guard let names = info[kDisplayProductName] as? NSDictionary else {
 		return nil
 	}
