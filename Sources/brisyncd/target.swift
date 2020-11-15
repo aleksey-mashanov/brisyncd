@@ -66,7 +66,7 @@ class TargetDisplay: Display {
 		}
 		self.display = display
 		self.framebuffer = framebuffer
-		guard let ddc = DDC(forFramebuffer: framebuffer) else {
+		guard let ddc = try? DDC(framebuffer: framebuffer) else {
 			IOObjectRelease(framebuffer)
 			IOObjectRelease(display)
 			return nil
@@ -124,22 +124,29 @@ class TargetDisplay: Display {
 	}
 
 	func process() {
+		let name = self.name
 		job.mutex.wait()
 		if let brightness = job.brightness {
 			job.brightness = nil
 			job.mutex.signal()
-			if ddc.write(command: .brightness, value: brightness) {
-				os_log("Target display [%{public}s] brightness set to %d%%", type: .info, name, brightness)
-			} else {
-				os_log("Failed to set target display [%{public}s] brightness to %d%%", name, brightness)
+			ddc.setVCPFeature(.brightness, to: brightness) {
+				switch $0 {
+				case .success(_):
+					os_log("Target display [%{public}s] brightness set to %d%%", type: .info, name, brightness)
+				case .failure(let error):
+					os_log("Failed to set target display [%{public}s] brightness to %d%%: %{public}s", name, brightness, String(describing: error))
+				}
 			}
 		} else if let contrast = job.contrast {
 			job.contrast = nil
 			job.mutex.signal()
-			if ddc.write(command: .contrast, value: contrast) {
-				os_log("Target display [%{public}s] contrast set to %d%%", type: .info, name, contrast)
-			} else {
-				os_log("Failed to set target display [%{public}s] contrast to %d%%", name, contrast)
+			ddc.setVCPFeature(.contrast, to: contrast) {
+				switch $0 {
+				case .success(_):
+					os_log("Target display [%{public}s] contrast set to %d%%", type: .info, name, contrast)
+				case .failure(let error):
+					os_log("Failed to set target display [%{public}s] contrast to %d%%: %{public}s", name, contrast, String(describing: error))
+				}
 			}
 		} else {
 			job.active = false

@@ -2,21 +2,21 @@
   "object": {
     "pins": [
       {
-        "package": "DDC.swift",
-        "repositoryURL": "https://github.com/aleksey-mashanov/DDC.swift.git",
-        "state": {
-          "branch": "master",
-          "revision": "94b6b1cfdd87a9ace7f1563f168b7999b9db1909",
-          "version": null
-        }
-      },
-      {
         "package": "swift-argument-parser",
         "repositoryURL": "https://github.com/apple/swift-argument-parser.git",
         "state": {
           "branch": null,
           "revision": "92646c0cdbaca076c8d3d0207891785b3379cbff",
           "version": "0.3.1"
+        }
+      },
+      {
+        "package": "swift-ddc",
+        "repositoryURL": "https://github.com/aleksey-mashanov/swift-ddc.git",
+        "state": {
+          "branch": "master",
+          "revision": "cdf8533b3dfb7f48b3f16f9e8dae01abbe842ccd",
+          "version": null
         }
       }
     ]

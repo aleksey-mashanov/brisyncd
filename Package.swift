@@ -8,12 +8,12 @@ let package = Package(
 		.macOS(.v10_13),
 	],
 	dependencies: [
-		.package(url: "https://github.com/aleksey-mashanov/DDC.swift.git", .branch("master")),
+		.package(url: "https://github.com/aleksey-mashanov/swift-ddc.git", .branch("master")),
 		.package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMinor(from: "0.3.0")),
 	],
 	targets: [
 		.target(name: "brisyncd", dependencies: [
-			.product(name: "DDC", package: "DDC.swift"),
+			.product(name: "DDC", package: "swift-ddc"),
 			.product(name: "ArgumentParser", package: "swift-argument-parser"),
 		]),
 	]
