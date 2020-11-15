@@ -106,7 +106,7 @@ struct Brisyncd: ParsableCommand {
 					"""
 			)
 		)
-		var targetsOnly: Bool
+		var targetsOnly: Bool = false
 
 		@Option(
 			help: ArgumentHelp(
