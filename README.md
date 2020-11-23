@@ -36,7 +36,7 @@ four parameters: `min`, `max`, `gamma` and `contrast`.
 `brisyncd` reads configuration from `~/.brisyncd.json` and `/usr/local/etc/brisyncd.json`
 (the first found of them, can be overridden using `--config` command-line option).
 Configuration file is a JSON with the following structure (all fields are optional,
-see `brisyncd -h` for detailed description):
+comments here are for readability, they must be omitted in the config file):
 
 ```yaml
 {
@@ -58,6 +58,8 @@ see `brisyncd -h` for detailed description):
     "targetsOnly": true     # manage known targets only (default: false)
 }
 ```
+
+See `brisyncd help config` for more information.
 
 The simplest way to create custom configuration is to dump a configuration detected by brisyncd
 to a file and then modify it:

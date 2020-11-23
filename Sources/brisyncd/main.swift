@@ -15,78 +15,52 @@ struct Brisyncd: ParsableCommand {
 			and automatically selects display to get the brightness from and displays to apply \
 			the brightness to.
 
-			Additional configuration can be provided by a configuration file and command-line options. \
+			Additional configuration can be provided by a configuration file. \
 			By default brisyncd reads configuration from ~/.brisyncd.json and /usr/local/etc/brisyncd.json \
 			(the first found of them). This can be overridden by --config option. \
-			Configuration file is a JSON with the following structure (all fields are optional, see \
-			command-line options description for detailed information):
+			\(configHelpHeader)
 
-			{
-				"source": "Color LCD",  # name of the source display
-				"min": 0,               # default minimum brightness level (default: 0)
-				"max": 100,             # default maximum brightness level (default: 100)
-				"gamma": 1.0,           # default brightness gamma correction (default: 1.0)
-				"contrast": null,       # default contrast (default: null)
-				"interval": 50,         # default update interval, ms. (default: 50)
-				"targets": {            # dictionary of targets with custom configuration
-					"DELL U2720Q": {    # keys of the dict are names of the target displays
-						"min": 35,      # minimum brightness level
-						"max": 85,      # maximum brightness level
-						"gamma": 2.2,   # brightness gamma correction
-						"contrast": 75, # normal contrast
-						"interval": 50  # update interval, ms.
-					}
-				},
-				"targetsOnly": true     # manage known targets only (default: false)
-			}
+			See `brisyncd help config` for more information.
 			""",
 		subcommands: [ConfigCommand.self]
 	)
 
+	static let configHelpHeader = """
+		Configuration file is a JSON with the following structure (all fields are optional, comments here \
+		are for readability, they must be omitted in the config file):
+
+		{
+			"source": "Color LCD",  # name of the source display
+			"min": 0,               # default minimum brightness level (default: 0)
+			"max": 100,             # default maximum brightness level (default: 100)
+			"gamma": 1.0,           # default brightness gamma correction (default: 1.0)
+			"contrast": null,       # default contrast (default: null)
+			"interval": 50,         # default update interval, ms. (default: 50)
+			"targets": {            # dictionary of targets with custom configuration
+				"DELL U2720Q": {    # keys of the dict are names of the target displays
+					"min": 35,      # minimum brightness level
+					"max": 85,      # maximum brightness level
+					"gamma": 2.2,   # brightness gamma correction
+					"contrast": 75, # normal contrast
+					"interval": 50  # update interval, ms.
+				}
+			},
+			"targetsOnly": true     # manage known targets only (default: false)
+		}
+		"""
+
 	struct Options: ParsableArguments {
 		@Option(
 			name: .shortAndLong,
-			help: ArgumentHelp(
-				"Configuration file path.",
-				discussion: """
-					Read configuration from a JSON file. \
-					If this option is not provided then configuration will be read from ~/.brisyncd.json \
-					or /usr/local/etc/brisyncd.json.
-
-					"""
-			)
+			help: "Read a configuration from the file <config>."
 		)
 		var config: String?
 
-		@Option(
-			help: ArgumentHelp(
-				"Name of the source display.",
-				discussion: """
-					If not set then the first found will be used.
-
-					"""
-			)
-		)
+		@Option(help: .hidden)
 		var source: String?
 
 		@Option(
-			help: ArgumentHelp(
-				"Targets displays configuration for a heterogenous multi-monitor setup.",
-				discussion: """
-					If you have more than one external display then different configurations \
-					may be required for them. In this case you can use this option to \
-					configure each monitor separately.
-
-					This option accepts JSON containing a dictionary which keys are names of \
-					displays and values are configuration dictionaries with the following \
-					keys: "min", "max", "gamma", "contrast". Meaning and possible values are \
-					the same as for the command-line options with the same names. \
-					Values specified in command-line options in this case are used as defaults.
-
-					Example: '{"DELL U2720Q":{"min":35,"max":85,"gamma":2.2,"contrast":75}}'
-
-					"""
-			),
+			help: .hidden,
 			transform: {
 				guard let data = $0.data(using: .utf8) else {
 					throw ValidationError("Badly encoded string, should be UTF-8")
@@ -96,86 +70,22 @@ struct Brisyncd: ParsableCommand {
 		)
 		var targets: [String: Config.Target]?
 
-		@Flag(
-			help: ArgumentHelp(
-				"Synchronize brightness of known displays only.",
-				discussion: """
-					If this flag is set then the brightness of the displays specified in \
-					'--targets' option only will be synchronized.
-
-					"""
-			)
-		)
+		@Flag(help: .hidden)
 		var targetsOnly: Bool = false
 
-		@Option(
-			help: ArgumentHelp(
-				"Minimum synchronizable brightness. (default: 0)",
-				discussion: """
-					Minimum brightness level of the source display which can be represented by the target display.
-
-					To choose the correct value set your target display brightness to 0% and find \
-					a value of the source display brightness which looks the same way. \
-					If your target display is darker than the source then this value can be lower than 0.
-
-					"""
-			)
-		)
+		@Option(help: .hidden)
 		var min: Int?
 
-		@Option(
-			help: ArgumentHelp(
-				"Maximum synchronizable brightness. (default: 100)",
-				discussion: """
-					Maximum brightness level of the source display which can be represented by the target display.
-
-					To choose the correct value set your target display brightness to 100% and find \
-					a value of the source display brightness which looks the same way. \
-					If your target display is brighter than the source then this value can be greater than 100.
-
-					"""
-			)
-		)
+		@Option(help: .hidden)
 		var max: Int?
 
-		@Option(
-			help: ArgumentHelp(
-				"Brightness gamma correction. (default: 1.0)",
-				discussion: """
-					Power of the gamma correction function between brightnesses of source and target displays.
-
-					Select this value after '--min' and '--max' if the visible brightnesses of your displays \
-					differ in the middle range.
-
-					"""
-			)
-		)
+		@Option(help: .hidden)
 		var gamma: Float?
 
-		@Option(
-			help: ArgumentHelp(
-				"Contrast of a target display.",
-				discussion: """
-					Use this option if your target display is not dark enough at brightness 0. \
-					If set then will be used while the target display brightness is greater than 0. \
-					When the target display brightness reaches 0 then the following darkening of the target \
-					display will be performed by lowering the contrast.
-
-					"""
-			)
-		)
+		@Option(help: .hidden)
 		var contrast: Int?
 
-		@Option(
-			help: ArgumentHelp(
-				"Target display update interval, ms. (default: 50)",
-				discussion: """
-					This option is used to not DoS display's DDC/CI by sending too many messages to it. \
-					Increment interval if you encounter problems.
-
-					"""
-			)
-		)
+		@Option(help: .hidden)
 		var interval: Int?
 	}
 
@@ -223,9 +133,66 @@ struct Brisyncd: ParsableCommand {
 			commandName: "config",
 			abstract: "Print current configuration to stdout.",
 			discussion: """
-				This is the starting point of customizing configuration. \
+				The starting point of a configuration customization. \
 				Run `brisyncd config > ~/.brisyncd.json` and then edit \
 				the generated file.
+
+				\(configHelpHeader)
+
+				TOP LEVEL PARAMETERS
+
+				* "source"
+				A name of the source display. \
+				If not set then the first found will be used.
+
+				* "targets"
+				Targets displays configuration for a heterogenous multi-monitor setup. \
+				If you have more than one external display then different configurations \
+				may be required for them. In this case you can use this option to \
+				configure each monitor separately.
+				This option must be a dictionary which keys are names of \
+				displays and values are configuration dictionaries with the following \
+				keys: "min", "max", "gamma", "contrast" and "interval".
+				See "TARGET DISPLAY PARAMETERS" section below.
+
+				* "targetsOnly"
+				Synchronize brightness of known displays only. \
+				If this flag is set then the brightness of the displays specified in \
+				"targets" key only will be synchronized.
+
+				* "min", "max", "gamma", "contrast", "interval"
+				Default values for the parameters described in "TARGET DISPLAY PARAMETERS".
+
+				TARGET DISPLAY PARAMETERS
+
+				* "min" (default: 0)
+				Minimum brightness level of the source display which can be represented by the target display.
+				To choose the correct value set your target display brightness to 0% and find \
+				a value of the source display brightness which looks the same way. \
+				If your target display is darker than the source then this value can be lower than 0.
+
+				* "max" (default: 100)
+				Maximum brightness level of the source display which can be represented by the target display.
+				To choose the correct value set your target display brightness to 100% and find \
+				a value of the source display brightness which looks the same way. \
+				If your target display is brighter than the source then this value can be greater than 100.
+
+				* "gamma" (default: 1.0)
+				Power of the gamma correction function between brightnesses of source and target displays.
+				Select this value after "min" and "max" if the visible brightnesses of your displays \
+				differ in the middle range.
+
+				* "contrast"
+				Contrast of a target display.
+				Use this option if your target display is not dark enough at brightness 0. \
+				If set then will be used while the target display brightness is greater than 0. \
+				When the target display brightness reaches 0 then the following darkening of the target \
+				display will be performed by lowering the contrast.
+
+				* "interval" (default: 50)
+				Target display update interval, ms.
+				This option is used to not DoS display's DDC/CI by sending too many messages to it. \
+				Increment interval if you encounter problems.
 				"""
 		)
 
