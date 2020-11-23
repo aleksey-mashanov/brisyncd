@@ -59,13 +59,13 @@ comments here are for readability, they must be omitted in the config file):
 }
 ```
 
-See `brisyncd help config` for more information.
+See `/usr/local/sbin/brisyncd help config` for more information.
 
 The simplest way to create custom configuration is to dump a configuration detected by brisyncd
 to a file and then modify it:
 
 ```sh
-brisyncd config > ~/.brisyncd.json
+/usr/local/sbin/brisyncd config -o ~/.brisyncd.json
 ```
 
 `brisyncd` reads configuration file on startup so don't forget to restart it after modification:

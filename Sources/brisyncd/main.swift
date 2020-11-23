@@ -134,7 +134,7 @@ struct Brisyncd: ParsableCommand {
 			abstract: "Print current configuration to stdout.",
 			discussion: """
 				The starting point of a configuration customization. \
-				Run `brisyncd config > ~/.brisyncd.json` and then edit \
+				Run `brisyncd config -o ~/.brisyncd.json` and then edit \
 				the generated file.
 
 				\(configHelpHeader)
@@ -199,6 +199,9 @@ struct Brisyncd: ParsableCommand {
 		@OptionGroup()
 		var options: Options
 
+		@Option(name: .shortAndLong, help: "A file to write the current configuration to.")
+		var output: String?
+
 		func run() throws {
 			var config = try Config.read(with: options)
 			let (sources, targets) = try Brisyncd.initDisplays(with: config)
@@ -210,8 +213,13 @@ struct Brisyncd: ParsableCommand {
 			let encoder = JSONEncoder()
 			encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
-			let data = try encoder.encode(config)
-			print(String(data: data, encoding: .utf8)!)
+			var data = try encoder.encode(config)
+			data.append(contentsOf: "\n".utf8)
+			if let output = output {
+				try data.write(to: URL(fileURLWithPath: output))
+			} else {
+				FileHandle.standardOutput.write(data)
+			}
 		}
 	}
 }
