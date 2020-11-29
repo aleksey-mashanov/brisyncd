@@ -52,7 +52,6 @@ class TargetDisplays: PublishTerminateHandler {
 
 class TargetDisplay: Display {
 	let display: io_service_t
-	let framebuffer: io_service_t
 	let ddc: DDC
 	var brightness: UInt16 = 101
 	var contrast: UInt16 = 101
@@ -60,14 +59,8 @@ class TargetDisplay: Display {
 	var job = Job()
 
 	init?(_ display: io_service_t) {
-		guard let framebuffer = Self.framebuffer(forDisplay: display) else {
-			IOObjectRelease(display)
-			return nil
-		}
 		self.display = display
-		self.framebuffer = framebuffer
-		guard let ddc = try? DDC(framebuffer: framebuffer) else {
-			IOObjectRelease(framebuffer)
+		guard let ddc = try? DDC(display: display) else {
 			IOObjectRelease(display)
 			return nil
 		}
@@ -75,7 +68,6 @@ class TargetDisplay: Display {
 	}
 
 	deinit {
-		IOObjectRelease(framebuffer)
 		IOObjectRelease(display)
 	}
 
@@ -178,18 +170,5 @@ class TargetDisplay: Display {
 				self.contrast = newContrast
 			}
 		}
-	}
-
-	static func framebuffer(forDisplay display: io_service_t) -> io_service_t? {
-		var displayConnect: io_service_t = 0
-		guard IORegistryEntryGetParentEntry(display, kIOServicePlane, &displayConnect) == KERN_SUCCESS else {
-			return nil
-		}
-		defer { IOObjectRelease(displayConnect) }
-		var framebuffer: io_service_t = 0
-		guard IORegistryEntryGetParentEntry(displayConnect, kIOServicePlane, &framebuffer) == KERN_SUCCESS else {
-			return nil
-		}
-		return framebuffer
 	}
 }

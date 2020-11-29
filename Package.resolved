@@ -14,9 +14,9 @@
         "package": "swift-ddc",
         "repositoryURL": "https://github.com/aleksey-mashanov/swift-ddc.git",
         "state": {
-          "branch": "master",
-          "revision": "40d9ac39e9204727b983637af1bfa7c46d4beef6",
-          "version": null
+          "branch": null,
+          "revision": "4c4e1487515d5cfcea55470eb44be59a27a11a25",
+          "version": "1.0.0"
         }
       }
     ]
